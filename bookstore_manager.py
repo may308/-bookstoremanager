@@ -110,3 +110,79 @@ def add_sale(
         conn.rollback()
         return False, "資料庫錯誤，新增失敗"
 
+def print_sale_report(conn: sqlite3.Connection) -> None:
+    """顯示所有銷售記錄的報表"""
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.sid, s.sdate, m.mname, b.btitle, b.bprice, s.sqty, s.sdiscount, s.stotal
+        FROM sale s
+        JOIN member m ON s.mid = m.mid
+        JOIN book b ON s.bid = b.bid
+        ORDER BY s.sid
+    """
+    )
+    sales = cursor.fetchall()
+    for i, sale in enumerate(sales, 1):
+        print("\n==================== 銷售報表 ====================")
+        print(f"銷售 #{i}")
+        print(f"銷售編號: {sale['sid']}")
+        print(f"銷售日期: {sale['sdate']}")
+        print(f"會員姓名: {sale['mname']}")
+        print(f"書籍標題: {sale['btitle']}")
+        print("--------------------------------------------------")
+        print("單價\t數量\t折扣\t小計")
+        print("--------------------------------------------------")
+        print(
+            f"{sale['bprice']}\t{sale['sqty']}\t{sale['sdiscount']}\t{sale['stotal']:,}"
+        )
+        print("--------------------------------------------------")
+        print(f"銷售總額: {sale['stotal']:,}")
+        print("==================================================")
+
+
+def update_sale(conn: sqlite3.Connection) -> None:
+    """更新銷售折扣金額並重算總額"""
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.sid, s.sdate, m.mname FROM sale s
+        JOIN member m ON s.mid = m.mid
+        ORDER BY s.sid
+    """
+    )
+    sales = cursor.fetchall()
+    print("\n======== 銷售記錄列表 ========")
+    for i, s in enumerate(sales, 1):
+        print(f"{i}. 銷售編號: {s['sid']} - 會員: {s['mname']} - 日期: {s['sdate']}")
+    print("================================")
+
+    sid_input = input("請選擇要更新的銷售編號 (輸入數字或按 Enter 取消): ")
+    if not sid_input:
+        return
+    try:
+        sid = int(sid_input)
+        if sid < 1 or sid > len(sales):
+            raise ValueError
+        sid_val = sales[sid - 1]["sid"]
+        discount = int(input("請輸入新的折扣金額："))
+        if discount < 0:
+            print("錯誤：折扣金額不能為負數")
+            return
+
+        cursor.execute(
+            "SELECT sqty, b.bprice FROM sale s JOIN book b ON s.bid = b.bid WHERE sid = ?",
+            (sid_val,),
+        )
+        sale = cursor.fetchone()
+        stotal = sale["bprice"] * sale["sqty"] - discount
+        cursor.execute(
+            "UPDATE sale SET sdiscount = ?, stotal = ? WHERE sid = ?",
+            (discount, stotal, sid_val),
+        )
+        conn.commit()
+        print(f"=> 銷售編號 {sid_val} 已更新！(銷售總額: {stotal:,})")
+    except (ValueError, IndexError):
+        print("錯誤：請輸入有效的數字")
+
+
