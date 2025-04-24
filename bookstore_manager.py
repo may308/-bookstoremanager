@@ -15,64 +15,77 @@ def initialize_db(conn: sqlite3.Connection) -> None:
         cursor = conn.cursor()
         cursor.executescript(
             """
-        CREATE TABLE IF NOT EXISTS member (
-            mid TEXT PRIMARY KEY,
-            mname TEXT NOT NULL,
-            mphone TEXT NOT NULL,
-            memail TEXT
-        );
+            CREATE TABLE IF NOT EXISTS member (
+                mid TEXT PRIMARY KEY,
+                mname TEXT NOT NULL,
+                mphone TEXT NOT NULL,
+                memail TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS book (
-            bid TEXT PRIMARY KEY,
-            btitle TEXT NOT NULL,
-            bprice INTEGER NOT NULL,
-            bstock INTEGER NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS book (
+                bid TEXT PRIMARY KEY,
+                btitle TEXT NOT NULL,
+                bprice INTEGER NOT NULL,
+                bstock INTEGER NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS sale (
-            sid INTEGER PRIMARY KEY AUTOINCREMENT,
-            sdate TEXT NOT NULL,
-            mid TEXT NOT NULL,
-            bid TEXT NOT NULL,
-            sqty INTEGER NOT NULL,
-            sdiscount INTEGER NOT NULL,
-            stotal INTEGER NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS sale (
+                sid INTEGER PRIMARY KEY AUTOINCREMENT,
+                sdate TEXT NOT NULL,
+                mid TEXT NOT NULL,
+                bid TEXT NOT NULL,
+                sqty INTEGER NOT NULL,
+                sdiscount INTEGER NOT NULL,
+                stotal INTEGER NOT NULL
+            );
 
-        INSERT OR IGNORE INTO member VALUES (
-            'M001', 'Alice', '0912-345678', 'alice@example.com'
-        );
-        INSERT OR IGNORE INTO member VALUES (
-            'M002', 'Bob', '0923-456789', 'bob@example.com'
-        );
-        INSERT OR IGNORE INTO member VALUES (
-            'M003', 'Cathy', '0934-567890', 'cathy@example.com'
-        );
+            INSERT OR IGNORE INTO member VALUES (
+                'M001', 'Alice', '0912-345678', 'alice@example.com'
+            );
+            INSERT OR IGNORE INTO member VALUES (
+                'M002', 'Bob', '0923-456789', 'bob@example.com'
+            );
+            INSERT OR IGNORE INTO member VALUES (
+                'M003', 'Cathy', '0934-567890', 'cathy@example.com'
+            );
 
-        INSERT OR IGNORE INTO book VALUES (
-            'B001', 'Python Programming', 600, 50
-        );
-        INSERT OR IGNORE INTO book VALUES (
-            'B002', 'Data Science Basics', 800, 30
-        );
-        INSERT OR IGNORE INTO book VALUES (
-            'B003', 'Machine Learning Guide', 1200, 20
-        );
+            INSERT OR IGNORE INTO book VALUES (
+                'B001', 'Python Programming', 600, 50
+            );
+            INSERT OR IGNORE INTO book VALUES (
+                'B002', 'Data Science Basics', 800, 30
+            );
+            INSERT OR IGNORE INTO book VALUES (
+                'B003', 'Machine Learning Guide', 1200, 20
+            );
 
-        INSERT OR IGNORE INTO sale (sid, sdate, mid, bid, sqty, sdiscount, stotal)
-        VALUES ('2024-01-15', 'M001', 'B001', 2, 100, 1100);
-        INSERT OR IGNORE INTO sale (sid, sdate, mid, bid, sqty, sdiscount, stotal)
-        VALUES ('2024-01-16', 'M002', 'B002', 1, 50, 750);
-        INSERT OR IGNORE INTO sale (sid, sdate, mid, bid, sqty, sdiscount, stotal)
-        VALUES ('2024-01-17', 'M001', 'B003', 3, 200, 3400);
-        INSERT OR IGNORE INTO sale (sid, sdate, mid, bid, sqty, sdiscount, stotal)
-        VALUES ('2024-01-18', 'M003', 'B001', 1, 0, 600);
-        """
+            INSERT OR IGNORE INTO sale (
+                sid, sdate, mid, bid, sqty, sdiscount, stotal
+            )
+            VALUES (1, '2024-01-15', 'M001', 'B001', 2, 100, 1100);
+            INSERT OR IGNORE INTO sale (
+                sid, sdate, mid, bid, sqty, sdiscount, stotal
+            )
+            VALUES (2, '2024-01-16', 'M002', 'B002', 1, 50, 750);
+            INSERT OR IGNORE INTO sale (
+                sid, sdate, mid, bid, sqty, sdiscount, stotal
+            )
+            VALUES (3, '2024-01-17', 'M001', 'B003', 3, 200, 3400);
+            INSERT OR IGNORE INTO sale (
+                sid, sdate, mid, bid, sqty, sdiscount, stotal
+            )
+            VALUES (4, '2024-01-18', 'M003', 'B001', 1, 0, 600);
+            """
         )
 
 
 def add_sale(
-    conn: sqlite3.Connection, sdate: str, mid: str, bid: str, sqty: int, sdiscount: int
+    conn: sqlite3.Connection,
+    sdate: str,
+    mid: str,
+    bid: str,
+    sqty: int,
+    sdiscount: int
 ) -> Tuple[bool, str]:
     """新增銷售記錄，驗證會員、書籍、數量、折扣等"""
     try:
@@ -103,10 +116,14 @@ def add_sale(
 
         cursor.execute("BEGIN")
         cursor.execute(
-            "INSERT INTO sale (sdate, mid, bid, sqty, sdiscount, stotal) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO sale (sdate, mid, bid, sqty, sdiscount, stotal) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             (sdate, mid, bid, sqty, sdiscount, stotal),
         )
-        cursor.execute("UPDATE book SET bstock = bstock - ? WHERE bid = ?", (sqty, bid))
+        cursor.execute(
+            "UPDATE book SET bstock = bstock - ? WHERE bid = ?",
+            (sqty, bid)
+        )
         conn.commit()
         return True, f"銷售記錄已新增！(銷售總額: {stotal:,})"
     except sqlite3.Error:
@@ -119,12 +136,13 @@ def print_sale_report(conn: sqlite3.Connection) -> None:
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT s.sid, s.sdate, m.mname, b.btitle, b.bprice, s.sqty, s.sdiscount, s.stotal
+        SELECT s.sid, s.sdate, m.mname, b.btitle, b.bprice,
+               s.sqty, s.sdiscount, s.stotal
         FROM sale s
         JOIN member m ON s.mid = m.mid
         JOIN book b ON s.bid = b.bid
         ORDER BY s.sid
-    """
+        """
     )
     sales = cursor.fetchall()
     for i, sale in enumerate(sales, 1):
@@ -138,7 +156,8 @@ def print_sale_report(conn: sqlite3.Connection) -> None:
         print("單價\t數量\t折扣\t小計")
         print("--------------------------------------------------")
         print(
-            f"{sale['bprice']}\t{sale['sqty']}\t{sale['sdiscount']}\t{sale['stotal']:,}"
+            f"{sale['bprice']}\t{sale['sqty']}\t"
+            f"{sale['sdiscount']}\t{sale['stotal']:,}"
         )
         print("--------------------------------------------------")
         print(f"銷售總額: {sale['stotal']:,}")
@@ -175,7 +194,10 @@ def update_sale(conn: sqlite3.Connection) -> None:
             return
 
         cursor.execute(
-            "SELECT sqty, b.bprice FROM sale s JOIN book b ON s.bid = b.bid WHERE sid = ?",
+            "SELECT sqty, b.bprice "
+            "FROM sale s "
+            "JOIN book b ON s.bid = b.bid "
+            "WHERE sid = ?",
             (sid_val,),
         )
         sale = cursor.fetchone()
