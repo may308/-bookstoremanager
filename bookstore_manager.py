@@ -3,12 +3,14 @@ from typing import Tuple
 
 
 def connect_db() -> sqlite3.Connection:
+    """建立並返回 SQLite 資料庫連線"""
     conn = sqlite3.connect('bookstore.db')
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def initialize_db(conn: sqlite3.Connection) -> None:
+    """初始化資料庫：建立資料表並插入初始資料"""
     with conn:
         cursor = conn.cursor()
         cursor.executescript(
@@ -72,6 +74,7 @@ def initialize_db(conn: sqlite3.Connection) -> None:
 def add_sale(
     conn: sqlite3.Connection, sdate: str, mid: str, bid: str, sqty: int, sdiscount: int
 ) -> Tuple[bool, str]:
+    """新增銷售記錄，驗證會員、書籍、數量、折扣等"""
     try:
         cursor = conn.cursor()
 
@@ -109,6 +112,7 @@ def add_sale(
     except sqlite3.Error:
         conn.rollback()
         return False, "資料庫錯誤，新增失敗"
+
 
 def print_sale_report(conn: sqlite3.Connection) -> None:
     """顯示所有銷售記錄的報表"""
@@ -186,3 +190,99 @@ def update_sale(conn: sqlite3.Connection) -> None:
         print("錯誤：請輸入有效的數字")
 
 
+def delete_sale(conn: sqlite3.Connection) -> None:
+    """刪除指定銷售記錄"""
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.sid, s.sdate, m.mname FROM sale s
+        JOIN member m ON s.mid = m.mid
+        ORDER BY s.sid
+    """
+    )
+    sales = cursor.fetchall()
+    print("\n======== 銷售記錄列表 ========")
+    for i, s in enumerate(sales, 1):
+        print(f"{i}. 銷售編號: {s['sid']} - 會員: {s['mname']} - 日期: {s['sdate']}")
+    print("================================")
+
+    while True:
+
+        sid_input = input("請選擇要刪除的銷售編號 (輸入數字或按 Enter 取消): ")
+        if not sid_input:
+            return
+        try:
+            sid = int(sid_input)
+            if sid < 1 or sid > len(sales):
+                print("錯誤：請輸入有效的數字")
+                continue
+            sid_val = sales[sid - 1]["sid"]
+            cursor.execute("DELETE FROM sale WHERE sid = ?", (sid_val,))
+            conn.commit()
+            print(f"=> 銷售編號 {sid_val} 已刪除")
+            break
+        except ValueError:
+            print("錯誤：請輸入有效的數字")
+
+
+def main() -> None:
+    """主程式：選單迴圈與功能呼叫"""
+    conn = connect_db()
+    initialize_db(conn)
+
+    while True:
+        print("\n***************選單***************")
+        print("1. 新增銷售記錄")
+        print("2. 顯示銷售報表")
+        print("3. 更新銷售記錄")
+        print("4. 刪除銷售記錄")
+        print("5. 離開")
+        print("**********************************")
+        choice = input("請選擇操作項目(Enter 離開)：")
+        if choice == "" or choice == "5":
+            print("再見！")
+            break
+        elif choice == "1":
+            sdate = input("請輸入銷售日期 (YYYY-MM-DD)：")
+            mid = input("請輸入會員編號：")
+            bid = input("請輸入書籍編號：")
+
+            # 數量輸入與驗證
+            while True:
+                try:
+                    sqty_input = input("請輸入購買數量：")
+                    sqty = int(sqty_input)
+                    if sqty <= 0:
+                        print("=> 錯誤：數量必須為正整數，請重新輸入")
+                        continue
+                    break
+                except ValueError:
+                    print("=> 錯誤：數量必須為整數，請重新輸入")
+
+            # 折扣金額輸入與驗證
+            while True:
+                try:
+                    sdiscount_input = input("請輸入折扣金額：")
+                    sdiscount = int(sdiscount_input)
+                    if sdiscount < 0:
+                        print("=> 錯誤：折扣金額不能為負數，請重新輸入")
+                        continue
+                    break
+                except ValueError:
+                    print("=> 錯誤：折扣金額必須為整數，請重新輸入")
+
+            # 呼叫新增銷售記錄的函式
+            success, message = add_sale(conn, sdate, mid, bid, sqty, sdiscount)
+            print(f"=> {message}")
+        elif choice == "2":
+            print_sale_report(conn)
+        elif choice == "3":
+            update_sale(conn)
+        elif choice == "4":
+            delete_sale(conn)
+        else:
+            print("=> 請輸入有效的選項（1-5）")
+
+
+if __name__ == "__main__":
+    main()
