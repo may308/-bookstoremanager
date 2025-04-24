@@ -3,14 +3,12 @@ from typing import Tuple
 
 
 def connect_db() -> sqlite3.Connection:
-    """建立並返回 SQLite 資料庫連線"""
     conn = sqlite3.connect('bookstore.db')
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def initialize_db(conn: sqlite3.Connection) -> None:
-    """初始化資料庫：建立資料表並插入初始資料"""
+def initialize_db(conn: sqlite3.Connection):
     with conn:
         cursor = conn.cursor()
         cursor.executescript(
@@ -87,7 +85,6 @@ def add_sale(
     sqty: int,
     sdiscount: int
 ) -> Tuple[bool, str]:
-    """新增銷售記錄，驗證會員、書籍、數量、折扣等"""
     try:
         cursor = conn.cursor()
 
@@ -96,12 +93,12 @@ def add_sale(
 
         cursor.execute("SELECT * FROM member WHERE mid = ?", (mid,))
         if not cursor.fetchone():
-            return False, "錯誤：會員編號無效"
+            return False, "錯誤：會員編號無效或書籍編號無效"
 
         cursor.execute("SELECT * FROM book WHERE bid = ?", (bid,))
         book = cursor.fetchone()
         if not book:
-            return False, "錯誤：書籍編號無效"
+            return False, "錯誤：會員編號無效或書籍編號無效"
 
         if sqty <= 0:
             return False, "錯誤：數量必須為正整數"
@@ -131,8 +128,7 @@ def add_sale(
         return False, "資料庫錯誤，新增失敗"
 
 
-def print_sale_report(conn: sqlite3.Connection) -> None:
-    """顯示所有銷售記錄的報表"""
+def print_sale_report(conn: sqlite3.Connection):
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -164,8 +160,7 @@ def print_sale_report(conn: sqlite3.Connection) -> None:
         print("==================================================")
 
 
-def update_sale(conn: sqlite3.Connection) -> None:
-    """更新銷售折扣金額並重算總額"""
+def update_sale(conn: sqlite3.Connection):
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -212,8 +207,7 @@ def update_sale(conn: sqlite3.Connection) -> None:
         print("錯誤：請輸入有效的數字")
 
 
-def delete_sale(conn: sqlite3.Connection) -> None:
-    """刪除指定銷售記錄"""
+def delete_sale(conn: sqlite3.Connection):
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -247,8 +241,7 @@ def delete_sale(conn: sqlite3.Connection) -> None:
             print("錯誤：請輸入有效的數字")
 
 
-def main() -> None:
-    """主程式：選單迴圈與功能呼叫"""
+def main():
     conn = connect_db()
     initialize_db(conn)
 
@@ -269,7 +262,6 @@ def main() -> None:
             mid = input("請輸入會員編號：")
             bid = input("請輸入書籍編號：")
 
-            # 數量輸入與驗證
             while True:
                 try:
                     sqty_input = input("請輸入購買數量：")
@@ -281,7 +273,6 @@ def main() -> None:
                 except ValueError:
                     print("=> 錯誤：數量必須為整數，請重新輸入")
 
-            # 折扣金額輸入與驗證
             while True:
                 try:
                     sdiscount_input = input("請輸入折扣金額：")
@@ -293,7 +284,6 @@ def main() -> None:
                 except ValueError:
                     print("=> 錯誤：折扣金額必須為整數，請重新輸入")
 
-            # 呼叫新增銷售記錄的函式
             success, message = add_sale(conn, sdate, mid, bid, sqty, sdiscount)
             print(f"=> {message}")
         elif choice == "2":
