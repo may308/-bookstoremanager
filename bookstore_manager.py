@@ -271,7 +271,7 @@ def main():
                         continue
                     break
                 except ValueError:
-                    print("=> 錯誤：數量必須為整數，請重新輸入")
+                    print("=> 錯誤：數量或折扣必須為整數，請重新輸入")
 
             while True:
                 try:
